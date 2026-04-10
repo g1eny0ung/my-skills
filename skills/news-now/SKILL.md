@@ -63,6 +63,8 @@ Apply these source-specific rules:
 
 - For WallstreetCN hot, read from `data.day_items`.
 - For SSPAI hot, read from `data`.
+- For WallstreetCN hot, drop articles whose title contains `华尔街见闻早餐`.
+- For SSPAI hot, drop articles whose title contains `福利派`.
 - If a source does not provide a summary field, omit `description` instead of inventing content.
 - Keep URLs absolute.
 - Do not add metadata such as author, id, timestamps, tags, counts, or source names unless the user explicitly asks for them.

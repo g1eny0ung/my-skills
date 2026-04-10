@@ -41,6 +41,7 @@ transform_wallstreetcn_hot() {
     [
       .data.day_items[]?
       | select(.title and .uri)
+      | select(.title | contains("华尔街见闻早餐") | not)
       | {
           title: .title,
           url: .uri
@@ -54,6 +55,7 @@ transform_sspai_hot() {
     [
       .data[]?
       | select(.title and .id)
+      | select(.title | contains("福利派") | not)
       | (
         {
           title: .title,
@@ -116,13 +118,13 @@ filter_payload() {
 
 self_test_hot_fixture() {
   cat <<'EOF'
-{"data":{"day_items":[{"title":"Hot article","uri":"https://wallstreetcn.com/articles/123"}]}}
+{"data":{"day_items":[{"title":"Hot article","uri":"https://wallstreetcn.com/articles/123"},{"title":"华尔街见闻早餐FM-Radio | 2026年4月10日","uri":"https://wallstreetcn.com/articles/999"}]}}
 EOF
 }
 
 self_test_sspai_fixture() {
   cat <<'EOF'
-{"data":[{"id":789,"title":"SSPAI article","summary":"SSPAI summary"}]}
+{"data":[{"id":789,"title":"SSPAI article","summary":"SSPAI summary"},{"id":790,"title":"福利派 | 今日特惠","summary":"ignore me"}]}
 EOF
 }
 

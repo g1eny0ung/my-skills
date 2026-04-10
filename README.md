@@ -2,6 +2,14 @@
 
 Personal skill repository.
 
+## Installation
+
+```sh
+npx skills add g1eny0ung/my-skills
+# Or install a single skill
+npx skills add g1eny0ung/my-skills --skill news-now
+```
+
 ## Skills
 
 - `news-now`

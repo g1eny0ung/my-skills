@@ -1,4 +1,4 @@
 interface:
   display_name: "News Now"
   short_description: "Fetch curated CN tech and finance feeds"
-  default_prompt: "Use $news-now to fetch WallstreetCN and SSPAI hot items as cleaned JSON."
+  default_prompt: "Use $news-now to fetch WallstreetCN, SSPAI, and Longbridge hot items as cleaned JSON."

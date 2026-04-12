@@ -21,3 +21,10 @@ npx skills add g1eny0ung/my-skills --skill news-now
 - Usage details belong in each skill's `SKILL.md`.
 - `news-now` depends on `bash`, `curl`, and `jq`.
 - `news-now` tracks fetched URLs in `skills/news-now/data/read_urls.txt` by default.
+
+## Statements
+
+### About news-now skill
+
+- Please do not query frequently to avoid putting pressure on data source servers
+- This skill is for personal learning purposes only, please do not abuse it

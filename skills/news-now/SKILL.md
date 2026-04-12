@@ -1,15 +1,15 @@
 ---
 name: news-now
-description: Fetch and normalize Chinese information-flow content from WallstreetCN and SSPAI. Use when Codex needs WallstreetCN hot articles or SSPAI hot articles, then strip noisy API fields, filter out previously fetched URLs, and return agent-ready JSON with `title`, `url`, and optional `description`. Trigger on requests such as "获取华尔街见闻热门", "获取少数派热门", "整理资讯列表", "过滤已读文章", or "输出精简 news feed JSON".
+description: Fetch and normalize Chinese information-flow content from WallstreetCN, SSPAI, and Longbridge. Use when Codex needs WallstreetCN hot articles, SSPAI hot articles, or Longbridge key events, then strip noisy API fields, filter out previously fetched URLs, and return agent-ready JSON with `title`, `url`, and optional `summary`. Trigger on requests such as "获取华尔街见闻热门", "获取少数派热门", "获取 longbridge 关键事件", or "输出精简 news feed JSON".
 ---
 
 # News Now
 
 ## Overview
 
-Fetch WallstreetCN and SSPAI content feeds, remove already seen articles, and normalize the remaining items into compact JSON for downstream agent use.
+Fetch WallstreetCN, SSPAI, and Longbridge content feeds, remove already seen articles, and normalize the remaining items into compact JSON for downstream agent use.
 
-Return `title` and `url` for each article item, and include `description` only when the source provides a usable summary. Drop all other API fields.
+Return `title` and `url` for each article item, and include `summary` only when the source provides a usable summary. Drop all other API fields.
 
 ## Quick Start
 
@@ -19,10 +19,11 @@ Run the bundled script:
 bash skills/news-now/scripts/fetch_feed.sh
 ```
 
-By default the script fetches all supported sources and prints a JSON object with two top-level keys:
+By default the script fetches all supported sources and prints compact JSON with three top-level keys:
 
 - `wallstreetcn_hot`
 - `sspai_hot`
+- `longbridge_hot`
 
 ## Supported Sources
 
@@ -31,11 +32,18 @@ Use `--source` to limit the fetch to one source:
 - `all`
 - `wallstreetcn-hot`
 - `sspai-hot`
+- `longbridge-hot`
 
 Example:
 
 ```bash
 bash skills/news-now/scripts/fetch_feed.sh --source sspai-hot
+```
+
+Use `--pretty-print` when you want formatted output:
+
+```bash
+bash skills/news-now/scripts/fetch_feed.sh --pretty-print
 ```
 
 ## Output Rules
@@ -49,13 +57,21 @@ Return items in this shape:
 }
 ```
 
-or, when a summary exists:
+or, for sources with summaries:
 
 ```json
 {
   "title": "Article title",
   "url": "https://...",
-  "description": "Short summary"
+  "summary": "Short summary"
+}
+```
+
+```json
+{
+  "title": "Event title",
+  "url": "https://...",
+  "summary": "Overview text"
 }
 ```
 
@@ -63,9 +79,14 @@ Apply these source-specific rules:
 
 - For WallstreetCN hot, read from `data.day_items`.
 - For SSPAI hot, read from `data`.
+- For Longbridge hot, POST to `https://m.lbkrs.com/api/forward/v1/event/events/feed` and read from `data.events`.
 - For WallstreetCN hot, drop articles whose title contains `华尔街见闻早餐`.
 - For SSPAI hot, drop articles whose title contains `福利派`.
-- If a source does not provide a summary field, omit `description` instead of inventing content.
+- For Longbridge hot, set `filter.time_end` to the current epoch time in seconds, and `filter.time_start` to `time_end - 86400`.
+- For Longbridge hot, build the URL as `https://web.lbkrs.com/zh-CN/events/{id}?channel=n{id}` using `event.id`.
+- For SSPAI hot, return the source `summary` field directly as `summary`, or `""` when missing.
+- For Longbridge hot, use `event.overview` as `summary`.
+- If a source does not provide a summary field, omit `summary` unless that source explicitly requires an empty string.
 - Keep URLs absolute.
 - Do not add metadata such as author, id, timestamps, tags, counts, or source names unless the user explicitly asks for them.
 
@@ -84,6 +105,7 @@ Apply these rules:
 ## Execution Notes
 
 - SSPAI `created_at` must be the current epoch time in seconds. The script computes it at runtime automatically.
+- Longbridge payload `time_end` must be the current epoch time in seconds, and `time_start` must be one day earlier. The script computes both at runtime automatically.
 - The script depends on `bash`, `curl`, and `jq`.
 - If `curl` or `jq` is missing, stop and ask the user to install it before running the script.
 - If the network is unavailable, fail clearly instead of returning guessed content.

@@ -54,6 +54,7 @@ transform_wallstreetcn_hot() {
       .data.day_items[]?
       | select(.title and .uri)
       | select(.title | contains("华尔街见闻早餐") | not)
+      | select(.uri | contains("premium/articles") | not)
       | {
           title: .title,
           url: .uri
@@ -187,7 +188,7 @@ filter_payload() {
 
 self_test_hot_fixture() {
   cat <<'EOF'
-{"data":{"day_items":[{"title":"Hot article","uri":"https://wallstreetcn.com/articles/123"},{"title":"华尔街见闻早餐FM-Radio | 2026年4月10日","uri":"https://wallstreetcn.com/articles/999"}]}}
+{"data":{"day_items":[{"title":"Hot article","uri":"https://wallstreetcn.com/articles/123"},{"title":"Premium article","uri":"https://wallstreetcn.com/premium/articles/456?layout=wscn-layout"},{"title":"华尔街见闻早餐FM-Radio | 2026年4月10日","uri":"https://wallstreetcn.com/articles/999"}]}}
 EOF
 }
 

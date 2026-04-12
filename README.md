@@ -13,6 +13,7 @@ npx skills add g1eny0ung/my-skills --skill news-now
 ## Skills
 
 - `news-now`
+
   Fetch WallstreetCN hot articles and SSPAI hot articles, filter out URLs that have already been seen, and return compact JSON for agent use.
 
 ## Notes

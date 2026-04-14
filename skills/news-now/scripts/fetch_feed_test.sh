@@ -55,6 +55,46 @@ transform_longbridge_hot() {
   '
 }
 
+build_longbridge_hot_payload() {
+  local score_min="$1"
+  local time_end
+  local time_start
+
+  time_end="$(date +%s)"
+  time_start="$((time_end - 86400))"
+
+  jq -cn \
+    --argjson time_start "$time_start" \
+    --argjson time_end "$time_end" \
+    --argjson score_min "$score_min" \
+    '{
+      filter: {
+        time_start: $time_start,
+        time_end: $time_end,
+        categories: ["ReportDate", "FinancialReport", "MacroDataUpdated", "MacroDataDate", "PostEvent"],
+        score_min: $score_min,
+        score_max: 10
+      },
+      option: {
+        with_overview: true,
+        with_summary: false,
+        with_stocks: true,
+        with_social: false,
+        with_resources: true,
+        with_news_posts: true,
+        with_derivatives: true
+      },
+      sort: [
+        { field: "issued_at", order: 2 },
+        { field: "score", order: 2 }
+      ],
+      query: {
+        size: 20,
+        visited: []
+      }
+    }'
+}
+
 print_json() {
   local payload="$1"
   local COMPACT="${2:-1}"
@@ -173,6 +213,7 @@ run_self_test() {
   local longbridge_hot
   local payload
   local state_file
+  local longbridge_payload
 
   state_file="$(mktemp)"
   READ_URLS_FILE="$state_file"
@@ -185,6 +226,19 @@ run_self_test() {
   [[ "$wallstreetcn_hot" == '[{"title":"Hot article","url":"https://wallstreetcn.com/articles/123"}]' ]] || exit 1
   [[ "$sspai_hot" == '[{"title":"SSPAI article","url":"https://sspai.com/post/789","summary":"SSPAI summary"}]' ]] || exit 1
   [[ "$longbridge_hot" == '[{"title":"Longbridge event","url":"https://web.lbkrs.com/zh-CN/events/3125600?channel=n3125600","summary":"Longbridge overview"}]' ]] || exit 1
+
+  # Test build_longbridge_hot_payload with default score_min
+  longbridge_payload="$(build_longbridge_hot_payload 6)"
+  [[ $(jq -r '.filter.score_min' <<<"$longbridge_payload") == "6" ]] || exit 1
+  [[ $(jq -r '.filter.score_max' <<<"$longbridge_payload") == "10" ]] || exit 1
+
+  # Test build_longbridge_hot_payload with custom score_min
+  longbridge_payload="$(build_longbridge_hot_payload 5)"
+  [[ $(jq -r '.filter.score_min' <<<"$longbridge_payload") == "5" ]] || exit 1
+
+  # Test build_longbridge_hot_payload with custom score_min as float
+  longbridge_payload="$(build_longbridge_hot_payload 7.5)"
+  [[ $(jq -r '.filter.score_min' <<<"$longbridge_payload") == "7.5" ]] || exit 1
 
   wallstreetcn_hot="$(filter_unread_items "$wallstreetcn_hot" "$READ_URLS_FILE")"
   sspai_hot="$(filter_unread_items "$sspai_hot" "$READ_URLS_FILE")"

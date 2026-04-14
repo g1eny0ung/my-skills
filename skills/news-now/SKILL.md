@@ -46,6 +46,12 @@ Use `--pretty-print` when you want formatted output:
 bash skills/news-now/scripts/fetch_feed.sh --pretty-print
 ```
 
+Use `--longbridge-score-min` to specify a custom minimum score for Longbridge hot events (must be a number ≤ 10; defaults to 6):
+
+```bash
+bash skills/news-now/scripts/fetch_feed.sh --source longbridge-hot --longbridge-score-min 5
+```
+
 ## Output Rules
 
 Return items in this shape:
@@ -83,6 +89,7 @@ Apply these source-specific rules:
 - For WallstreetCN hot, drop articles whose title contains `华尔街见闻早餐`.
 - For SSPAI hot, drop articles whose title contains `福利派`.
 - For Longbridge hot, set `filter.time_end` to the current epoch time in seconds, and `filter.time_start` to `time_end - 86400`.
+- For Longbridge hot, set `filter.score_max` to 10 and `filter.score_min` to a user-specified value (defaults to 6).
 - For Longbridge hot, build the URL as `https://web.lbkrs.com/zh-CN/events/{id}?channel=n{id}` using `event.id`.
 - For SSPAI hot, return the source `summary` field directly as `summary`, or `""` when missing.
 - For Longbridge hot, use `event.overview` as `summary`.
@@ -106,6 +113,7 @@ Apply these rules:
 
 - SSPAI `created_at` must be the current epoch time in seconds. The script computes it at runtime automatically.
 - Longbridge payload `time_end` must be the current epoch time in seconds, and `time_start` must be one day earlier. The script computes both at runtime automatically.
+- For Longbridge hot events, you can specify a custom `score_min` value (defaults to 6) using `--longbridge-score-min`. The value must be a valid number ≤ 10.
 - The script depends on `bash`, `curl`, and `jq`.
 - If `curl` or `jq` is missing, stop and ask the user to install it before running the script.
 - If the network is unavailable, fail clearly instead of returning guessed content.

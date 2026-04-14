@@ -5,6 +5,7 @@ set -euo pipefail
 SOURCE="all"
 TIMEOUT="15"
 COMPACT="1"
+LONGBRIDGE_SCORE_MIN="6"
 USER_AGENT="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STATE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)/data"
@@ -15,7 +16,7 @@ SSPAI_HOT_URL="https://sspai.com/api/v1/article/hot/page/get"
 
 usage() {
   cat <<'EOF'
-Usage: fetch_feed.sh [--source all|wallstreetcn-hot|sspai-hot|longbridge-hot] [--timeout seconds] [--state-file path] [--pretty-print]
+Usage: fetch_feed.sh [--source all|wallstreetcn-hot|sspai-hot|longbridge-hot] [--timeout seconds] [--state-file path] [--pretty-print] [--longbridge-score-min number]
 EOF
 }
 
@@ -99,6 +100,7 @@ build_sspai_url() {
 }
 
 build_longbridge_hot_payload() {
+  local score_min="$1"
   local time_end
   local time_start
 
@@ -108,12 +110,13 @@ build_longbridge_hot_payload() {
   jq -cn \
     --argjson time_start "$time_start" \
     --argjson time_end "$time_end" \
+    --argjson score_min "$score_min" \
     '{
       filter: {
         time_start: $time_start,
         time_end: $time_end,
         categories: ["ReportDate", "FinancialReport", "MacroDataUpdated", "MacroDataDate", "PostEvent"],
-        score_min: 6,
+        score_min: $score_min,
         score_max: 10
       },
       option: {
@@ -253,6 +256,10 @@ main() {
         COMPACT="0"
         shift
         ;;
+      --longbridge-score-min)
+        LONGBRIDGE_SCORE_MIN="${2:-}"
+        shift 2
+        ;;
       --help|-h)
         usage
         exit 0
@@ -264,6 +271,18 @@ main() {
         ;;
     esac
   done
+
+  # Validate longbridge score min
+  if ! [[ "$LONGBRIDGE_SCORE_MIN" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+    echo "Invalid --longbridge-score-min value: must be a number" >&2
+    usage >&2
+    exit 1
+  fi
+  if [[ $(jq -n "$LONGBRIDGE_SCORE_MIN > 10") == "true" ]]; then
+    echo "Invalid --longbridge-score-min value: must not exceed 10" >&2
+    usage >&2
+    exit 1
+  fi
 
   ensure_state_file
 
@@ -289,7 +308,7 @@ main() {
       longbridge_hot="$(
         fetch_json_post \
           "https://m.lbkrs.com/api/forward/v1/event/events/feed" \
-          "$(build_longbridge_hot_payload)" \
+          "$(build_longbridge_hot_payload "$LONGBRIDGE_SCORE_MIN")" \
         | transform_longbridge_hot
       )"
       ;;

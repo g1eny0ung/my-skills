@@ -5,7 +5,6 @@ set -euo pipefail
 SOURCE="all"
 TIMEOUT="15"
 COMPACT="1"
-SELF_TEST="0"
 USER_AGENT="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STATE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)/data"
@@ -16,7 +15,7 @@ SSPAI_HOT_URL="https://sspai.com/api/v1/article/hot/page/get"
 
 usage() {
   cat <<'EOF'
-Usage: fetch_feed.sh [--source all|wallstreetcn-hot|sspai-hot|longbridge-hot] [--timeout seconds] [--state-file path] [--pretty-print] [--self-test]
+Usage: fetch_feed.sh [--source all|wallstreetcn-hot|sspai-hot|longbridge-hot] [--timeout seconds] [--state-file path] [--pretty-print]
 EOF
 }
 
@@ -186,23 +185,7 @@ filter_payload() {
   esac
 }
 
-self_test_hot_fixture() {
-  cat <<'EOF'
-{"data":{"day_items":[{"title":"Hot article","uri":"https://wallstreetcn.com/articles/123"},{"title":"Premium article","uri":"https://wallstreetcn.com/premium/articles/456?layout=wscn-layout"},{"title":"华尔街见闻早餐FM-Radio | 2026年4月10日","uri":"https://wallstreetcn.com/articles/999"}]}}
-EOF
-}
 
-self_test_sspai_fixture() {
-  cat <<'EOF'
-{"data":[{"id":789,"title":"SSPAI article","summary":"SSPAI summary"},{"id":790,"title":"福利派 | 今日特惠","summary":"ignore me"}]}
-EOF
-}
-
-self_test_longbridge_fixture() {
-  cat <<'EOF'
-{"data":{"events":[{"event":{"id":"3125600","title":"Longbridge event","overview":"Longbridge overview"}}]}}
-EOF
-}
 
 ensure_state_file() {
   mkdir -p "$(dirname "$READ_URLS_FILE")"
@@ -241,36 +224,7 @@ mark_items_as_read() {
   done
 }
 
-run_self_test() {
-  local wallstreetcn_hot
-  local sspai_hot
-  local longbridge_hot
-  local payload
-  local state_file
 
-  state_file="$(mktemp)"
-  READ_URLS_FILE="$state_file"
-
-  wallstreetcn_hot="$(self_test_hot_fixture | transform_wallstreetcn_hot)"
-  sspai_hot="$(self_test_sspai_fixture | transform_sspai_hot)"
-  longbridge_hot="$(self_test_longbridge_fixture | transform_longbridge_hot)"
-
-  [[ "$wallstreetcn_hot" == '[{"title":"Hot article","url":"https://wallstreetcn.com/articles/123"}]' ]] || exit 1
-  [[ "$sspai_hot" == '[{"title":"SSPAI article","url":"https://sspai.com/post/789","summary":"SSPAI summary"}]' ]] || exit 1
-  [[ "$longbridge_hot" == '[{"title":"Longbridge event","url":"https://web.lbkrs.com/zh-CN/events/3125600?channel=n3125600","summary":"Longbridge overview"}]' ]] || exit 1
-
-  wallstreetcn_hot="$(filter_unread_items "$wallstreetcn_hot")"
-  sspai_hot="$(filter_unread_items "$sspai_hot")"
-  longbridge_hot="$(filter_unread_items "$longbridge_hot")"
-  mark_items_as_read "$wallstreetcn_hot"
-  mark_items_as_read "$sspai_hot"
-  mark_items_as_read "$longbridge_hot"
-
-  payload="$(build_payload "$wallstreetcn_hot" "$sspai_hot" "$longbridge_hot")"
-  filter_payload "$payload"
-
-  rm -f "$state_file"
-}
 
 main() {
   require_cmd bash
@@ -299,10 +253,6 @@ main() {
         COMPACT="0"
         shift
         ;;
-      --self-test)
-        SELF_TEST="1"
-        shift
-        ;;
       --help|-h)
         usage
         exit 0
@@ -321,12 +271,6 @@ main() {
   local sspai_hot='[]'
   local longbridge_hot='[]'
   local payload
-
-  if [[ "$SELF_TEST" == "1" ]]; then
-    payload="$(run_self_test)"
-    print_json "$payload"
-    return
-  fi
 
   case "$SOURCE" in
     all|wallstreetcn-hot)

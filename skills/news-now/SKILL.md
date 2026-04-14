@@ -115,6 +115,7 @@ Apply these rules:
 ### scripts/
 
 - [`scripts/fetch_feed.sh`](/Users/yangyue/work/my-skills/skills/news-now/scripts/fetch_feed.sh): Fetch and normalize the three feeds with shell tools.
+- [`scripts/fetch_feed_test.sh`](/Users/yangyue/work/my-skills/skills/news-now/scripts/fetch_feed_test.sh): Dedicated test script containing all fixture-based tests for the feed parsing logic.
 
 ### data/
 
@@ -122,8 +123,14 @@ Apply these rules:
 
 ## Validation
 
-Use the built-in fixture-based self-test when you need to verify parsing logic without network access:
+Use the dedicated test script when you need to verify parsing logic without network access:
 
 ```bash
-bash skills/news-now/scripts/fetch_feed.sh --self-test
+bash skills/news-now/scripts/fetch_feed_test.sh
+```
+
+To see pretty-printed output:
+
+```bash
+bash skills/news-now/scripts/fetch_feed_test.sh --pretty-print
 ```

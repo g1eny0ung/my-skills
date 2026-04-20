@@ -76,20 +76,27 @@ run_self_test() {
 
 main() {
   local COMPACT="1"
+  local OUTPUT_FORMAT="json"
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --compact)
         COMPACT="1"
+        OUTPUT_FORMAT="json"
         shift
         ;;
       --pretty-print)
         COMPACT="0"
+        OUTPUT_FORMAT="json"
+        shift
+        ;;
+      --txt)
+        OUTPUT_FORMAT="txt"
         shift
         ;;
       --help|-h)
         cat <<'EOF'
-Usage: fetch_feed_test.sh [--compact|--pretty-print] [--help|-h]
+Usage: fetch_feed_test.sh [--compact|--pretty-print|--txt] [--help|-h]
 EOF
         exit 0
         ;;
@@ -102,7 +109,7 @@ EOF
 
   local test_output
   test_output="$(run_self_test)"
-  print_json "$test_output" "$COMPACT"
+  print_output "$test_output" "$OUTPUT_FORMAT" "$COMPACT"
 }
 
 main "$@"

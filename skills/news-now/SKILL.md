@@ -46,6 +46,12 @@ Use `--pretty-print` when you want formatted output:
 bash skills/news-now/scripts/fetch_feed.sh --pretty-print
 ```
 
+Use `--txt` when you want plain-text output:
+
+```bash
+bash skills/news-now/scripts/fetch_feed.sh --txt
+```
+
 Use `--longbridge-score-min` to specify a custom minimum score for Longbridge hot events (must be a number ≤ 10; defaults to 6):
 
 ```bash
@@ -141,4 +147,10 @@ To see pretty-printed output:
 
 ```bash
 bash skills/news-now/scripts/fetch_feed_test.sh --pretty-print
+```
+
+To see plain-text output:
+
+```bash
+bash skills/news-now/scripts/fetch_feed_test.sh --txt
 ```

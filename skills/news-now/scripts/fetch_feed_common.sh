@@ -103,6 +103,49 @@ print_json() {
   fi
 }
 
+print_txt() {
+  local payload="$1"
+  printf '%s\n' "$payload" | jq -r '
+    to_entries
+    | map(
+        .key,
+        (
+          if (.value | length) == 0 then
+            "(empty)"
+          else
+            (.value[] | [
+              ("- " + .title),
+              ("  " + .url),
+              (if ((.summary // "") | length) > 0 then "  " + .summary else empty end)
+            ] | join("\n"))
+          end
+        ),
+        ""
+      )
+    | .[:-1]
+    | join("\n")
+  '
+}
+
+print_output() {
+  local payload="$1"
+  local format="${2:-json}"
+  local compact="${3:-1}"
+
+  case "$format" in
+    json)
+      print_json "$payload" "$compact"
+      ;;
+    txt)
+      print_txt "$payload"
+      ;;
+    *)
+      echo "Unsupported output format: $format" >&2
+      exit 1
+      ;;
+  esac
+}
+
 build_payload() {
   local wallstreetcn_hot="$1"
   local sspai_hot="$2"

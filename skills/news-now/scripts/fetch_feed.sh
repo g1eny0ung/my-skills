@@ -5,6 +5,7 @@ set -euo pipefail
 SOURCE="all"
 TIMEOUT="15"
 COMPACT="1"
+OUTPUT_FORMAT="json"
 LONGBRIDGE_SCORE_MIN="6"
 USER_AGENT="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,7 +20,7 @@ SSPAI_HOT_URL="https://sspai.com/api/v1/article/hot/page/get"
 
 usage() {
   cat <<'EOF'
-Usage: fetch_feed.sh [--source all|wallstreetcn-hot|sspai-hot|longbridge-hot] [--timeout seconds] [--state-file path] [--pretty-print] [--longbridge-score-min number]
+Usage: fetch_feed.sh [--source all|wallstreetcn-hot|sspai-hot|longbridge-hot] [--timeout seconds] [--state-file path] [--pretty-print] [--txt] [--longbridge-score-min number]
 EOF
 }
 
@@ -70,10 +71,16 @@ main() {
         ;;
       --compact)
         COMPACT="1"
+        OUTPUT_FORMAT="json"
         shift
         ;;
       --pretty-print)
         COMPACT="0"
+        OUTPUT_FORMAT="json"
+        shift
+        ;;
+      --txt)
+        OUTPUT_FORMAT="txt"
         shift
         ;;
       --longbridge-score-min)
@@ -142,7 +149,7 @@ main() {
 
   payload="$(build_payload "$wallstreetcn_hot" "$sspai_hot" "$longbridge_hot")"
   payload="$(filter_payload "$payload" "$SOURCE")"
-  print_json "$payload" "$COMPACT"
+  print_output "$payload" "$OUTPUT_FORMAT" "$COMPACT"
 }
 
 main "$@"

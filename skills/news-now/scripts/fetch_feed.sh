@@ -122,7 +122,6 @@ main() {
     all|wallstreetcn-hot)
       wallstreetcn_hot="$(fetch_json "$WALLSTREETCN_HOT_URL" | transform_wallstreetcn_hot)"
       wallstreetcn_hot="$(filter_unread_items "$wallstreetcn_hot" "$READ_URLS_FILE")"
-      mark_items_as_read "$wallstreetcn_hot" "$READ_URLS_FILE"
       ;;
   esac
 
@@ -130,7 +129,6 @@ main() {
     all|sspai-hot)
       sspai_hot="$(fetch_json "$(build_sspai_url)" | transform_sspai_hot)"
       sspai_hot="$(filter_unread_items "$sspai_hot" "$READ_URLS_FILE")"
-      mark_items_as_read "$sspai_hot" "$READ_URLS_FILE"
       ;;
   esac
 
@@ -143,9 +141,14 @@ main() {
         | transform_longbridge_hot
       )"
       longbridge_hot="$(filter_unread_items "$longbridge_hot" "$READ_URLS_FILE")"
-      mark_items_as_read "$longbridge_hot" "$READ_URLS_FILE"
       ;;
   esac
+
+  # Mark as read only after every selected source has been fetched
+  # successfully, so a mid-run failure does not silently drop items.
+  mark_items_as_read "$wallstreetcn_hot" "$READ_URLS_FILE"
+  mark_items_as_read "$sspai_hot" "$READ_URLS_FILE"
+  mark_items_as_read "$longbridge_hot" "$READ_URLS_FILE"
 
   payload="$(build_payload "$wallstreetcn_hot" "$sspai_hot" "$longbridge_hot")"
   payload="$(filter_payload "$payload" "$SOURCE")"

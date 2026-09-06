@@ -20,8 +20,16 @@ SSPAI_HOT_URL="https://sspai.com/api/v1/article/hot/page/get"
 
 usage() {
   cat <<'EOF'
-Usage: fetch_feed.sh [--source all|wallstreetcn-hot|sspai-hot|longbridge-hot] [--timeout seconds] [--state-file path] [--pretty-print] [--txt] [--longbridge-score-min number]
+Usage: fetch_feed.sh [--source all|wallstreetcn-hot|sspai-hot|longbridge-hot] [--timeout seconds] [--state-file path] [--compact|--pretty-print|--txt] [--longbridge-score-min number]
 EOF
+}
+
+require_value() {
+  if [[ $# -lt 2 || -z "$2" ]]; then
+    echo "Missing value for $1" >&2
+    usage >&2
+    exit 1
+  fi
 }
 
 fetch_json() {
@@ -51,32 +59,32 @@ build_sspai_url() {
 }
 
 main() {
-  require_cmd bash
   require_cmd curl
   require_cmd jq
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --source)
-        SOURCE="${2:-}"
+        require_value "$1" "${2:-}"
+        SOURCE="$2"
         shift 2
         ;;
       --timeout)
-        TIMEOUT="${2:-}"
+        require_value "$1" "${2:-}"
+        TIMEOUT="$2"
         shift 2
         ;;
       --state-file)
-        READ_URLS_FILE="${2:-}"
+        require_value "$1" "${2:-}"
+        READ_URLS_FILE="$2"
         shift 2
         ;;
       --compact)
         COMPACT="1"
-        OUTPUT_FORMAT="json"
         shift
         ;;
       --pretty-print)
         COMPACT="0"
-        OUTPUT_FORMAT="json"
         shift
         ;;
       --txt)
@@ -84,7 +92,8 @@ main() {
         shift
         ;;
       --longbridge-score-min)
-        LONGBRIDGE_SCORE_MIN="${2:-}"
+        require_value "$1" "${2:-}"
+        LONGBRIDGE_SCORE_MIN="$2"
         shift 2
         ;;
       --help|-h)
@@ -98,6 +107,13 @@ main() {
         ;;
     esac
   done
+
+  # Validate timeout
+  if ! [[ "$TIMEOUT" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+    echo "Invalid --timeout value: must be a number" >&2
+    usage >&2
+    exit 1
+  fi
 
   # Validate longbridge score min
   if ! [[ "$LONGBRIDGE_SCORE_MIN" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then

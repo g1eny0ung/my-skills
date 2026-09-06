@@ -1,6 +1,6 @@
 ---
 name: news-now
-description: Fetch and normalize Chinese information-flow content from WallstreetCN, SSPAI, and Longbridge. Use when Codex needs WallstreetCN hot articles, SSPAI hot articles, or Longbridge key events, then strip noisy API fields, filter out previously fetched URLs, and return agent-ready JSON with `title`, `url`, and optional `summary`. Trigger on requests such as "获取华尔街见闻热门", "获取少数派热门", "获取 longbridge 关键事件", or "输出精简 news feed JSON".
+description: Fetch and normalize Chinese information-flow content from WallstreetCN, SSPAI, and Longbridge. Use when the user wants WallstreetCN hot articles, SSPAI hot articles, or Longbridge key events, then strip noisy API fields, filter out previously fetched URLs, and return agent-ready JSON with `title`, `url`, and optional `summary`. Trigger on requests such as "获取华尔街见闻热门", "获取少数派热门", "获取 longbridge 关键事件", or "输出精简 news feed JSON".
 ---
 
 # News Now
@@ -16,7 +16,7 @@ Return `title` and `url` for each article item, and include `summary` only when 
 Run the bundled script:
 
 ```bash
-bash skills/news-now/scripts/fetch_feed.sh
+bash scripts/fetch_feed.sh
 ```
 
 By default the script fetches all supported sources and prints compact JSON with three top-level keys:
@@ -37,25 +37,25 @@ Use `--source` to limit the fetch to one source:
 Example:
 
 ```bash
-bash skills/news-now/scripts/fetch_feed.sh --source sspai-hot
+bash scripts/fetch_feed.sh --source sspai-hot
 ```
 
 Use `--pretty-print` when you want formatted output:
 
 ```bash
-bash skills/news-now/scripts/fetch_feed.sh --pretty-print
+bash scripts/fetch_feed.sh --pretty-print
 ```
 
 Use `--txt` when you want plain-text output:
 
 ```bash
-bash skills/news-now/scripts/fetch_feed.sh --txt
+bash scripts/fetch_feed.sh --txt
 ```
 
 Use `--longbridge-score-min` to specify a custom minimum score for Longbridge hot events (must be a number ≤ 10; defaults to 6):
 
 ```bash
-bash skills/news-now/scripts/fetch_feed.sh --source longbridge-hot --longbridge-score-min 5
+bash scripts/fetch_feed.sh --source longbridge-hot --longbridge-score-min 5
 ```
 
 ## Output Rules
@@ -105,7 +105,7 @@ Apply these source-specific rules:
 
 ## Read Tracking
 
-Track previously fetched article URLs in `skills/news-now/data/read_urls.txt` by default.
+Track previously fetched article URLs in `data/read_urls.txt` under this skill's directory by default.
 
 Apply these rules:
 
@@ -128,29 +128,19 @@ Apply these rules:
 
 ### scripts/
 
-- [`scripts/fetch_feed.sh`](/Users/yangyue/work/my-skills/skills/news-now/scripts/fetch_feed.sh): Fetch and normalize the three feeds with shell tools.
-- [`scripts/fetch_feed_test.sh`](/Users/yangyue/work/my-skills/skills/news-now/scripts/fetch_feed_test.sh): Dedicated test script containing all fixture-based tests for the feed parsing logic.
+- [`scripts/fetch_feed.sh`](scripts/fetch_feed.sh): Fetch and normalize the three feeds with shell tools.
+- [`scripts/fetch_feed_test.sh`](scripts/fetch_feed_test.sh): Dedicated test script containing all fixture-based tests for the feed parsing logic.
 
 ### data/
 
-- [`data/read_urls.txt`](/Users/yangyue/work/my-skills/skills/news-now/data/read_urls.txt): Default state file used to track fetched article URLs.
+- [`data/`](data/): Contains the runtime state file `read_urls.txt` used to track fetched article URLs. The file is created automatically on first run and is not tracked in git.
 
 ## Validation
 
 Use the dedicated test script when you need to verify parsing logic without network access:
 
 ```bash
-bash skills/news-now/scripts/fetch_feed_test.sh
+bash scripts/fetch_feed_test.sh
 ```
 
-To see pretty-printed output:
-
-```bash
-bash skills/news-now/scripts/fetch_feed_test.sh --pretty-print
-```
-
-To see plain-text output:
-
-```bash
-bash skills/news-now/scripts/fetch_feed_test.sh --txt
-```
+The script prints only the test result summary (`OK: <n> assertions passed.`).

@@ -47,6 +47,20 @@ self_test_longbridge_fixture() {
 EOF
 }
 
+# Two node feeds concatenated on stdin; covers cross-feed dedupe and date sort.
+self_test_v2ex_fixture() {
+  cat <<'EOF'
+{"title":"分享创造","items":[{"id":"1","title":"Newer post","url":"https://www.v2ex.com/t/2","date_published":"2026-09-13T14:53:02+00:00"},{"id":"2","title":"Older post","url":"https://www.v2ex.com/t/1","date_published":"2026-09-13T08:00:00+00:00"},{"id":"4","title":"","url":"https://www.v2ex.com/t/4","date_published":"2026-09-13T16:00:00+00:00"}]}
+{"title":"程序员","items":[{"id":"3","title":"Dup post","url":"https://www.v2ex.com/t/3","date_published":"2026-09-13T12:00:00+00:00"},{"id":"3","title":"Dup post","url":"https://www.v2ex.com/t/3","date_published":"2026-09-13T12:00:00+00:00"}]}
+EOF
+}
+
+self_test_hackernews_fixture() {
+  cat <<'EOF'
+{"hits":[{"objectID":"111","title":"Story with link","url":"https://example.com/a","points":100,"num_comments":50},{"objectID":"222","title":"Ask HN: no link","url":null,"points":1,"num_comments":0},{"objectID":"333","title":null,"url":null}]}
+EOF
+}
+
 # Runs fetch_feed.sh in a subshell; every failure path here exits before any
 # network access or state-file writes.
 self_test_arg_validation() {
@@ -81,6 +95,8 @@ run_self_test() {
   local wallstreetcn_hot
   local sspai_hot
   local longbridge_hot
+  local v2ex_hot
+  local hackernews_hot
   local payload
   local state_file
   local longbridge_payload
@@ -93,10 +109,14 @@ run_self_test() {
   wallstreetcn_hot="$(self_test_hot_fixture | transform_wallstreetcn_hot)"
   sspai_hot="$(self_test_sspai_fixture | transform_sspai_hot)"
   longbridge_hot="$(self_test_longbridge_fixture | transform_longbridge_hot)"
+  v2ex_hot="$(self_test_v2ex_fixture | transform_v2ex_hot)"
+  hackernews_hot="$(self_test_hackernews_fixture | transform_hackernews_hot)"
 
   assert_eq "transform_wallstreetcn_hot" '[{"title":"Hot article","url":"https://wallstreetcn.com/articles/123"}]' "$wallstreetcn_hot"
   assert_eq "transform_sspai_hot" '[{"title":"SSPAI article","url":"https://sspai.com/post/789","summary":"SSPAI summary"}]' "$sspai_hot"
   assert_eq "transform_longbridge_hot" '[{"title":"Longbridge event","url":"https://web.lbkrs.com/zh-CN/events/3125600?channel=n3125600","summary":"Longbridge overview"}]' "$longbridge_hot"
+  assert_eq "transform_v2ex_hot merges, dedupes, sorts newest first" '[{"title":"Newer post","url":"https://www.v2ex.com/t/2"},{"title":"Dup post","url":"https://www.v2ex.com/t/3"},{"title":"Older post","url":"https://www.v2ex.com/t/1"}]' "$v2ex_hot"
+  assert_eq "transform_hackernews_hot falls back to discussion url" '[{"title":"Story with link","url":"https://example.com/a"},{"title":"Ask HN: no link","url":"https://news.ycombinator.com/item?id=222"}]' "$hackernews_hot"
 
   # Test build_longbridge_hot_payload with default score_min
   longbridge_payload="$(build_longbridge_hot_payload 6)"
@@ -114,14 +134,20 @@ run_self_test() {
   wallstreetcn_hot="$(filter_unread_items "$wallstreetcn_hot" "$READ_URLS_FILE")"
   sspai_hot="$(filter_unread_items "$sspai_hot" "$READ_URLS_FILE")"
   longbridge_hot="$(filter_unread_items "$longbridge_hot" "$READ_URLS_FILE")"
+  v2ex_hot="$(filter_unread_items "$v2ex_hot" "$READ_URLS_FILE")"
+  hackernews_hot="$(filter_unread_items "$hackernews_hot" "$READ_URLS_FILE")"
   mark_items_as_read "$wallstreetcn_hot" "$READ_URLS_FILE"
   mark_items_as_read "$sspai_hot" "$READ_URLS_FILE"
   mark_items_as_read "$longbridge_hot" "$READ_URLS_FILE"
+  mark_items_as_read "$v2ex_hot" "$READ_URLS_FILE"
+  mark_items_as_read "$hackernews_hot" "$READ_URLS_FILE"
 
   # Items marked above must be dropped by a subsequent filter pass.
   assert_eq "re-filter drops marked wallstreetcn items" "[]" "$(filter_unread_items "$wallstreetcn_hot" "$state_file")"
   assert_eq "re-filter drops marked sspai items" "[]" "$(filter_unread_items "$sspai_hot" "$state_file")"
   assert_eq "re-filter drops marked longbridge items" "[]" "$(filter_unread_items "$longbridge_hot" "$state_file")"
+  assert_eq "re-filter drops marked v2ex items" "[]" "$(filter_unread_items "$v2ex_hot" "$state_file")"
+  assert_eq "re-filter drops marked hackernews items" "[]" "$(filter_unread_items "$hackernews_hot" "$state_file")"
 
   # Partial filtering: a recorded URL is dropped while unread URLs survive.
   partial_state="$(mktemp)"
@@ -130,12 +156,14 @@ run_self_test() {
   assert_eq "filter keeps unrecorded wallstreetcn item" '[{"title":"Hot article","url":"https://wallstreetcn.com/articles/123"}]' "$(filter_unread_items "$wallstreetcn_hot" "$partial_state" | jq -c .)"
   rm -f "$partial_state"
 
-  payload="$(build_payload "$wallstreetcn_hot" "$sspai_hot" "$longbridge_hot")"
-  assert_eq "payload keys" '["longbridge_hot","sspai_hot","wallstreetcn_hot"]' "$(jq -c 'keys' <<<"$payload")"
-  assert_eq "payload item counts" '[1,1,1]' "$(jq -c '[(.wallstreetcn_hot | length), (.sspai_hot | length), (.longbridge_hot | length)]' <<<"$payload")"
+  payload="$(build_payload "$wallstreetcn_hot" "$sspai_hot" "$longbridge_hot" "$v2ex_hot" "$hackernews_hot")"
+  assert_eq "payload keys" '["hackernews_hot","longbridge_hot","sspai_hot","v2ex_hot","wallstreetcn_hot"]' "$(jq -c 'keys' <<<"$payload")"
+  assert_eq "payload item counts" '[1,1,1,3,2]' "$(jq -c '[(.wallstreetcn_hot | length), (.sspai_hot | length), (.longbridge_hot | length), (.v2ex_hot | length), (.hackernews_hot | length)]' <<<"$payload")"
   assert_eq "filter_payload keeps only wallstreetcn" '["wallstreetcn_hot"]' "$(filter_payload "$payload" wallstreetcn-hot | jq -c 'keys')"
   assert_eq "filter_payload keeps only sspai" '["sspai_hot"]' "$(filter_payload "$payload" sspai-hot | jq -c 'keys')"
   assert_eq "filter_payload keeps only longbridge" '["longbridge_hot"]' "$(filter_payload "$payload" longbridge-hot | jq -c 'keys')"
+  assert_eq "filter_payload keeps only v2ex" '["v2ex_hot"]' "$(filter_payload "$payload" v2ex-hot | jq -c 'keys')"
+  assert_eq "filter_payload keeps only hackernews" '["hackernews_hot"]' "$(filter_payload "$payload" hackernews-hot | jq -c 'keys')"
 
   filter_payload "$payload" >/dev/null
 

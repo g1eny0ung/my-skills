@@ -53,6 +53,42 @@ transform_longbridge_hot() {
   '
 }
 
+# Input: multiple V2EX JSON Feed documents concatenated on stdin (one per node).
+# Dates are ISO 8601 strings in a uniform UTC offset, so string sort == time sort.
+# Output: merged items, deduped by URL, newest first, capped at 30, no summary.
+transform_v2ex_hot() {
+  jq -s -c '
+    [
+      .[]
+      | .items[]?
+      | select((.title // "") != "" and (.url // "") != "")
+      | {
+          title: .title,
+          url: .url,
+          _date: (.date_modified // .date_published // "")
+        }
+    ]
+    | unique_by(.url)
+    | sort_by(._date)
+    | reverse
+    | .[:30]
+    | map(del(._date))
+  '
+}
+
+transform_hackernews_hot() {
+  jq -c '
+    [
+      .hits[]?
+      | select((.title // "") != "")
+      | {
+          title: .title,
+          url: (.url // ("https://news.ycombinator.com/item?id=" + (.objectID | tostring)))
+        }
+    ]
+  '
+}
+
 build_longbridge_hot_payload() {
   local score_min="$1"
   local time_end
@@ -150,16 +186,22 @@ build_payload() {
   local wallstreetcn_hot="$1"
   local sspai_hot="$2"
   local longbridge_hot="$3"
+  local v2ex_hot="$4"
+  local hackernews_hot="$5"
 
   jq -n \
     --argjson wallstreetcn_hot "$wallstreetcn_hot" \
     --argjson sspai_hot "$sspai_hot" \
     --argjson longbridge_hot "$longbridge_hot" \
+    --argjson v2ex_hot "$v2ex_hot" \
+    --argjson hackernews_hot "$hackernews_hot" \
     '
       {
         wallstreetcn_hot: $wallstreetcn_hot,
         sspai_hot: $sspai_hot,
-        longbridge_hot: $longbridge_hot
+        longbridge_hot: $longbridge_hot,
+        v2ex_hot: $v2ex_hot,
+        hackernews_hot: $hackernews_hot
       }
     '
 }
@@ -179,6 +221,12 @@ filter_payload() {
       ;;
     longbridge-hot)
       printf '%s\n' "$payload" | jq '{longbridge_hot}'
+      ;;
+    v2ex-hot)
+      printf '%s\n' "$payload" | jq '{v2ex_hot}'
+      ;;
+    hackernews-hot)
+      printf '%s\n' "$payload" | jq '{hackernews_hot}'
       ;;
     *)
       echo "Unsupported source: $SOURCE" >&2

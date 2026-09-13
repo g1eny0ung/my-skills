@@ -17,10 +17,12 @@ source "$SCRIPT_DIR/fetch_feed_common.sh"
 
 WALLSTREETCN_HOT_URL="https://api-one-wscn.awtmt.com/apiv1/content/articles/hot?period=all"
 SSPAI_HOT_URL="https://sspai.com/api/v1/article/hot/page/get"
+HACKERNEWS_HOT_URL="https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=30"
+V2EX_FEED_NODES=(create ideas programmer share)
 
 usage() {
   cat <<'EOF'
-Usage: fetch_feed.sh [--source all|wallstreetcn-hot|sspai-hot|longbridge-hot] [--timeout seconds] [--state-file path] [--compact|--pretty-print|--txt] [--longbridge-score-min number]
+Usage: fetch_feed.sh [--source all|wallstreetcn-hot|sspai-hot|longbridge-hot|v2ex-hot|hackernews-hot] [--timeout seconds] [--state-file path] [--compact|--pretty-print|--txt] [--longbridge-score-min number]
 EOF
 }
 
@@ -56,6 +58,15 @@ build_sspai_url() {
   local created_at
   created_at="$(date +%s)"
   printf '%s?offset=0&limit=10&created_at=%s\n' "$SSPAI_HOT_URL" "$created_at"
+}
+
+# Prints one JSON Feed document per V2EX node; transform_v2ex_hot slurps them all.
+fetch_v2ex_hot_feeds() {
+  local node
+  for node in "${V2EX_FEED_NODES[@]}"; do
+    fetch_json "https://www.v2ex.com/feed/${node}.json"
+    printf '\n'
+  done
 }
 
 main() {
@@ -132,6 +143,8 @@ main() {
   local wallstreetcn_hot='[]'
   local sspai_hot='[]'
   local longbridge_hot='[]'
+  local v2ex_hot='[]'
+  local hackernews_hot='[]'
   local payload
 
   case "$SOURCE" in
@@ -160,13 +173,29 @@ main() {
       ;;
   esac
 
+  case "$SOURCE" in
+    all|v2ex-hot)
+      v2ex_hot="$(fetch_v2ex_hot_feeds | transform_v2ex_hot)"
+      v2ex_hot="$(filter_unread_items "$v2ex_hot" "$READ_URLS_FILE")"
+      ;;
+  esac
+
+  case "$SOURCE" in
+    all|hackernews-hot)
+      hackernews_hot="$(fetch_json "$HACKERNEWS_HOT_URL" | transform_hackernews_hot)"
+      hackernews_hot="$(filter_unread_items "$hackernews_hot" "$READ_URLS_FILE")"
+      ;;
+  esac
+
   # Mark as read only after every selected source has been fetched
   # successfully, so a mid-run failure does not silently drop items.
   mark_items_as_read "$wallstreetcn_hot" "$READ_URLS_FILE"
   mark_items_as_read "$sspai_hot" "$READ_URLS_FILE"
   mark_items_as_read "$longbridge_hot" "$READ_URLS_FILE"
+  mark_items_as_read "$v2ex_hot" "$READ_URLS_FILE"
+  mark_items_as_read "$hackernews_hot" "$READ_URLS_FILE"
 
-  payload="$(build_payload "$wallstreetcn_hot" "$sspai_hot" "$longbridge_hot")"
+  payload="$(build_payload "$wallstreetcn_hot" "$sspai_hot" "$longbridge_hot" "$v2ex_hot" "$hackernews_hot")"
   payload="$(filter_payload "$payload" "$SOURCE")"
   print_output "$payload" "$OUTPUT_FORMAT" "$COMPACT"
 }
